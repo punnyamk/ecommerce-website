@@ -7,21 +7,22 @@ import AdminProducts from './AdminProducts';
 const AdminRouter = () => {
   const { isAdmin } = useAppContext();
 
-  if (!isAdmin) return <Navigate to="/admin-login" />;
+  // 🔐 Protect admin routes
+  if (!isAdmin) return <Navigate to="/admin-login" replace />;
 
   return (
     <Routes>
-      {/* Admin Dashboard */}
-      <Route path="/" element={<AdminDashboard />} />
+      {/* Dashboard */}
+      <Route index element={<AdminDashboard />} />
 
-      {/* Admin Orders Page */}
+      {/* Orders Page */}
       <Route path="orders" element={<AdminOrders />} />
 
-      {/* Admin Products Page */}
+      {/* Products Page */}
       <Route path="products" element={<AdminProducts />} />
 
-      {/* Redirect any unknown admin route back to dashboard */}
-      <Route path="*" element={<Navigate to="/admin" />} />
+      {/* Fallback → Dashboard */}
+      <Route path="*" element={<Navigate to="." replace />} />
     </Routes>
   );
 };
