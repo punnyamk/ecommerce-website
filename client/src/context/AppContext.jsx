@@ -23,8 +23,8 @@ export const AppContextProvider = ({ children }) => {
   // ✅ PRODUCTS
   const [products, setProducts] = useState([]);
 
-  // ✅ ADMIN-ADDED CATEGORIES
-  const [adminCategories, setAdminCategories] = useState([]); 
+  // ✅ ADMIN CATEGORIES
+  const [adminCategories, setAdminCategories] = useState([]);
 
   // ✅ CART
   const [cartItems, setCartItems] = useState({});
@@ -39,52 +39,56 @@ export const AppContextProvider = ({ children }) => {
   const ADMIN_EMAIL = "admin@shop.com";
   const ADMIN_PASSWORD = "admin123";
 
-  // ✅ LOAD PRODUCTS & CATEGORIES
+  /* ================= LOAD INITIAL DATA ================= */
   const fetchProducts = useCallback(() => {
-    const storedProducts = JSON.parse(localStorage.getItem("products"));
-    if (storedProducts && storedProducts.length > 0) {
-      setProducts(storedProducts);
-    } else {
-      setProducts(dummyProducts);
-      localStorage.setItem("products", JSON.stringify(dummyProducts));
-    }
+    try {
+      const storedProducts = JSON.parse(localStorage.getItem("products"));
+      if (storedProducts?.length) {
+        setProducts(storedProducts);
+      } else {
+        setProducts(dummyProducts);
+        localStorage.setItem("products", JSON.stringify(dummyProducts));
+      }
 
-    const storedCategories = JSON.parse(localStorage.getItem("adminCategories")) || [];
-    setAdminCategories(storedCategories);
+      const storedCategories =
+        JSON.parse(localStorage.getItem("adminCategories")) || [];
+      setAdminCategories(storedCategories);
+    } catch (error) {
+      console.error("LocalStorage Error:", error);
+      setProducts(dummyProducts);
+      setAdminCategories([]);
+    }
   }, []);
 
-  // ✅ CART FUNCTIONS
-  const addToCart = useCallback(
-    (itemId) => {
-      const cartData = { ...cartItems };
-      cartData[itemId] = (cartData[itemId] || 0) + 1;
-      setCartItems(cartData);
-      toast.success("Product added to cart");
-    },
-    [cartItems]
-  );
+  /* ================= CART FUNCTIONS ================= */
 
-  const updateCartItem = useCallback(
-    (itemId, quantity) => {
-      const cartData = { ...cartItems };
-      cartData[itemId] = quantity;
-      setCartItems(cartData);
-    },
-    [cartItems]
-  );
+  const addToCart = useCallback((itemId) => {
+    setCartItems((prev) => {
+      const updated = { ...prev };
+      updated[itemId] = (updated[itemId] || 0) + 1;
+      return updated;
+    });
+    toast.success("Product added to cart");
+  }, []);
 
-  const removeFromCart = useCallback(
-    (itemId) => {
-      const cartData = { ...cartItems };
-      if (cartData[itemId]) {
-        cartData[itemId] -= 1;
-        if (cartData[itemId] === 0) delete cartData[itemId];
-        setCartItems(cartData);
-        toast.success("Removed from cart");
+  const updateCartItem = useCallback((itemId, quantity) => {
+    setCartItems((prev) => ({
+      ...prev,
+      [itemId]: quantity,
+    }));
+  }, []);
+
+  const removeFromCart = useCallback((itemId) => {
+    setCartItems((prev) => {
+      const updated = { ...prev };
+      if (updated[itemId]) {
+        updated[itemId] -= 1;
+        if (updated[itemId] === 0) delete updated[itemId];
       }
-    },
-    [cartItems]
-  );
+      return updated;
+    });
+    toast.success("Removed from cart");
+  }, []);
 
   const clearCart = () => {
     setCartItems({});
@@ -103,7 +107,8 @@ export const AppContextProvider = ({ children }) => {
     return total;
   };
 
-  // ✅ ADMIN LOGIN
+  /* ================= ADMIN AUTH ================= */
+
   const adminLogin = (email, password) => {
     if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
       localStorage.setItem("adminToken", "logged-in");
@@ -122,30 +127,44 @@ export const AppContextProvider = ({ children }) => {
     navigate("/admin-login");
   };
 
-  // ✅ ADD NEW CATEGORY (ADMIN)
+  /* ================= ADMIN CATEGORY ================= */
+
   const addAdminCategory = (newCategory) => {
-    const updatedCategories = [...adminCategories, newCategory];
-    setAdminCategories(updatedCategories);
-    localStorage.setItem("adminCategories", JSON.stringify(updatedCategories));
+    // prevent duplicate
+    const exists = adminCategories.some(
+      (c) => c.text.toLowerCase() === newCategory.text.toLowerCase()
+    );
+
+    if (exists) {
+      toast.error("Category already exists");
+      return;
+    }
+
+    const updated = [...adminCategories, newCategory];
+    setAdminCategories(updated);
+    localStorage.setItem("adminCategories", JSON.stringify(updated));
     toast.success(`Category "${newCategory.text}" added!`);
   };
 
-  // ✅ DELETE CATEGORY (OPTIONAL)
   const deleteAdminCategory = (categoryText) => {
-    const updatedCategories = adminCategories.filter(c => c.text !== categoryText);
-    setAdminCategories(updatedCategories);
-    localStorage.setItem("adminCategories", JSON.stringify(updatedCategories));
+    const updated = adminCategories.filter(
+      (c) => c.text !== categoryText
+    );
+    setAdminCategories(updated);
+    localStorage.setItem("adminCategories", JSON.stringify(updated));
     toast.success(`Category "${categoryText}" deleted!`);
   };
 
-  // ✅ INIT
+  /* ================= INIT ================= */
+
   useEffect(() => {
     fetchProducts();
 
     const token = localStorage.getItem("adminToken");
     if (token) setIsAdmin(true);
 
-    const storedOrders = JSON.parse(localStorage.getItem("orders")) || [];
+    const storedOrders =
+      JSON.parse(localStorage.getItem("orders")) || [];
     setOrders(storedOrders);
   }, [fetchProducts]);
 
@@ -153,6 +172,7 @@ export const AppContextProvider = ({ children }) => {
     <AppContext.Provider
       value={{
         navigate,
+
         user,
         setUser,
         isSeller,
@@ -182,7 +202,6 @@ export const AppContextProvider = ({ children }) => {
         orders,
         setOrders,
 
-        // ✅ ADMIN CATEGORIES
         adminCategories,
         addAdminCategory,
         deleteAdminCategory,
